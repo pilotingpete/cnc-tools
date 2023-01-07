@@ -5,12 +5,16 @@ from datetime import datetime
 
 # Domino design parameters. 
 PIP_DEPTH = -2.0        # How deep to drill the pip from the surface of the domino
-PIP_DIA = 4.2           # The diameter of the pip at the PIP_DEPTH - could be different if using v-bit vs drill.
-PIP_MAX_SQUARE = 17.5   # The pip pattern will fill to the extents of this boundary.
+PIP_DIA = 4.0           # The diameter of the pip at the PIP_DEPTH - could be different if using v-bit vs drill.
+PIP_MAX_SQUARE = 18.0   # The pip pattern will fill to the extents of this boundary.
 L_ORIGIN_X = 12.7       # X-coord for the center of the left half of the domino.
 L_ORIGIN_Y = -12.7      # Y-coord for the center of the left half of the domino.
 R_ORIGIN_X = 38.1       # X-coord for the center of the right half of the domino.
 R_ORIGIN_Y = -12.7      # Y-coord for the center of the right half of the domino.
+BISECT_DEPTH = -1.0     # Depth to mill the domino bisect mark.
+BISECT_WIDTH = 2.0      # Diameter formed on domino surface at BISECT_DEPTH for the tool making the bisect mark. 
+BISECT_LENGTH = PIP_MAX_SQUARE - BISECT_WIDTH - PIP_DIA     # Length of the bisect mark.
+DO_BISECT = True        # Do generate the bisect gcode if true, else do not.
 
 # Machining parameters
 R_PLANE = 0.7           # mm above part
@@ -38,6 +42,23 @@ def next_domino():
     ret_str += f"G00 X{PART_CHANGE__X} Y{PART_CHANGE__Y} (Rapid to part change location.) ;\n"
     ret_str += "M0 (Pause for part change.) ;\n"
     ret_str += f"S{SPINDLE_RPM} M03 (Start spindle.) ;\n"
+    return ret_str
+
+def bisect_domino(msg, bisect_len, bisect_depth):
+
+    domino_center_x = ( R_ORIGIN_X - L_ORIGIN_X ) / 2 + L_ORIGIN_X
+    bisect_start = L_ORIGIN_Y + ( bisect_len / 2.0 )
+    bisect_end = bisect_start - bisect_len
+
+    ret_str = f"({msg} of length {bisect_len} starting at X:{domino_center_x:.2f},Y:{bisect_start:.2f}) ;\n"
+    ret_str += f"G00 X{domino_center_x:.2f} Y{bisect_start:.2f} (Rapid to bisect start location.) ;\n"
+    ret_str += f"G01 F{DRILL_FEED} Z{bisect_depth} (Mill to bisect depth) ;\n"
+    ret_str += f"G01 F{DRILL_FEED} Y{bisect_end} (Mill to bisect end position) ;\n"
+    ret_str += f"G00 G90 Z{Z_RETRACT} (Rapid retract) ;\n"
+    
+    if not DO_BISECT:
+        ret_str = "(Do not make domino bisect mark.) ;\n"
+
     return ret_str
 
 def gcode_header():
@@ -159,19 +180,28 @@ def main():
 
         f.write(next_domino())
 
+        f.write("\n(~~~~~~~~~~ Start 0x0 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
+        f.write("(~~~~~~~~~~ End 0x0 Domino. ~~~~~~~~~~) ;\n")
+
+        f.write(next_domino())
+
         f.write("\n(~~~~~~~~~~ Start 0x1 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
         f.write("(~~~~~~~~~~ End 0x1 Domino. ~~~~~~~~~~) ;\n")
 
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 0x2 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("(~~~~~~~~~~ End 0x2 Domino. ~~~~~~~~~~) ;\n")
 
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 0x3 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("(~~~~~~~~~~ End 0x3 Domino. ~~~~~~~~~~) ;\n")
@@ -179,12 +209,14 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 0x4 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(four_pips("BEGIN 4-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("(~~~~~~~~~~ End 0x4 Domino. ~~~~~~~~~~) ;\n")
 
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 0x5 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
         f.write(four_pips("BEGIN 4-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("(~~~~~~~~~~ End 0x5 Domino. ~~~~~~~~~~) ;\n")
@@ -192,12 +224,14 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 0x6 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(six_pips("BEGIN 6-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("(~~~~~~~~~~ End 0x6 Domino. ~~~~~~~~~~) ;\n")
 
         f.write(next_domino())
         
         f.write("\n(~~~~~~~~~~ Start 1x1 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write("\n")
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
@@ -206,6 +240,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 1x2 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write("\n")
         f.write(two_pips("BEGIN 2-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
@@ -214,6 +249,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 1x3 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write("\n")
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
@@ -223,6 +259,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 1x4 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write("\n")
         f.write(four_pips("BEGIN 4-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
@@ -231,6 +268,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 1x5 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write("\n")
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
@@ -240,6 +278,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 1x6 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write("\n")
         f.write(six_pips("BEGIN 6-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
@@ -248,6 +287,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 2x2 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(two_pips("BEGIN 2-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
@@ -256,6 +296,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 2x3 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
@@ -265,6 +306,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 2x4 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(four_pips("BEGIN 4-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
@@ -273,6 +315,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 2x5 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
@@ -282,6 +325,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 2x6 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(six_pips("BEGIN 6-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
@@ -290,6 +334,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 3x3 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
@@ -300,6 +345,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 3x4 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
@@ -309,6 +355,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 3x5 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
@@ -319,6 +366,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 3x6 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write(two_pips("BEGIN 2-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
@@ -328,6 +376,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 4x4 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(four_pips("BEGIN 4-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(four_pips("BEGIN 4-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
@@ -336,6 +385,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 4x5 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(four_pips("BEGIN 4-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(one_pip("BEGIN 1-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_DEPTH))
@@ -345,6 +395,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 4x6 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(four_pips("BEGIN 4-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(six_pips("BEGIN 6-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
@@ -353,6 +404,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 5x5 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write(four_pips("BEGIN 4-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
@@ -363,6 +415,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 5x6 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(one_pip("BEGIN 1-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_DEPTH))
         f.write(four_pips("BEGIN 4-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
@@ -372,6 +425,7 @@ def main():
         f.write(next_domino())
 
         f.write("\n(~~~~~~~~~~ Start 6x6 Domino. ~~~~~~~~~~) ;\n")
+        f.write(bisect_domino("BEGIN DOMINO BISECT MARK", BISECT_LENGTH, BISECT_DEPTH))
         f.write(six_pips("BEGIN 6-PIP PATTERN", L_ORIGIN_X, L_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
         f.write("\n")
         f.write(six_pips("BEGIN 6-PIP PATTERN", R_ORIGIN_X, R_ORIGIN_Y, PIP_MAX_SQUARE, PIP_DEPTH,PIP_DIA))
